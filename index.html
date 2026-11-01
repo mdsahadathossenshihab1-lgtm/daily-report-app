@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#4f46e5">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<title>CallReport Pro — ডেইলি কল রিপোর্ট</title>
+<style>
+:root{--indigo:#4f46e5;--violet:#7c3aed;--teal:#0f766e;--bg:#eef2ff;--card:#fff;--text:#111827;--muted:#6b7280;--line:#e5e7eb;--radius:18px}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Noto Sans Bengali","Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+.top{background:linear-gradient(135deg,#4f46e5,#7c3aed 55%,#db2777);color:#fff;padding:22px 16px 28px}
+.top-inner{max-width:1000px;margin:0 auto;display:flex;gap:14px;align-items:center}
+.logo{width:56px;height:56px;border-radius:16px;background:rgba(255,255,255,.22);display:grid;place-items:center;font-size:28px;flex-shrink:0}
+.top h1{margin:0;font-size:26px}.top p{margin:4px 0 0;opacity:.9;font-size:14px}
+.wrap{max-width:1000px;margin:-14px auto 0;padding:0 14px 30px}
+.tabs{display:flex;background:#fff;border-radius:16px;padding:6px;box-shadow:0 4px 20px rgba(0,0,0,.08);gap:6px}
+.tabs button{flex:1;border:0;background:transparent;padding:12px 8px;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;color:#4b5563}
+.tabs button.active{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff}
+.card{background:var(--card);border-radius:var(--radius);padding:20px;margin-top:16px;box-shadow:0 4px 20px rgba(0,0,0,.06)}
+h2{margin:0 0 6px;font-size:20px}.sub{color:var(--muted);font-size:14px;margin:0 0 16px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{border:1px solid var(--line);border-radius:16px;padding:14px;background:linear-gradient(180deg,#fff,#f8fafc)}
+.stat .ic{font-size:22px}.stat b{display:block;font-size:24px;margin-top:6px}.stat span{color:var(--muted);font-size:13px}
+.stat.hot{border-color:#ddd6fe;background:linear-gradient(180deg,#eef2ff,#fff)}
+.bar-row{margin-top:14px}.bar-row label{display:flex;justify-content:space-between;font-size:14px;font-weight:600;margin-bottom:5px}
+.bar{height:10px;background:#e5e7eb;border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,#4f46e5,#db2777);border-radius:99px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.grid{grid-template-columns:1fr}}
+label{display:block;font-size:14px;font-weight:700;margin-bottom:5px}
+input,textarea{width:100%;padding:12px;border:1.5px solid #d1d5db;border-radius:12px;font-size:16px;font-family:inherit;background:#f9fafb}
+input:focus,textarea:focus{outline:0;border-color:#4f46e5;background:#fff;box-shadow:0 0 0 3px #e0e7ff}
+textarea{min-height:72px;resize:vertical}.full{grid-column:1/-1}
+.sec{font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#7c3aed;font-weight:800;margin:18px 0 10px}
+.btn{border:0;border-radius:12px;padding:13px 18px;font-size:16px;font-weight:800;cursor:pointer}
+.btn-primary{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;width:100%}
+.btn-light{background:#eef2ff;color:#312e81}.btn-danger{background:#fee2e2;color:#991b1b}
+.btn-sm{padding:9px 13px;font-size:14px}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.badge{display:inline-block;background:#eef2ff;color:#312e81;padding:5px 10px;border-radius:99px;font-size:13px;font-weight:700}
+.badge-money{background:#dcfce7;color:#166534}
+.report{border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:14px}
+.report pre{white-space:pre-wrap;font-family:inherit;background:#f8fafc;border:1px solid #f1f5f9;padding:13px;border-radius:12px;margin:12px 0;font-size:14px;line-height:1.6}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center}
+@media(max-width:600px){.metrics{grid-template-columns:repeat(2,1fr)}}
+.metrics div{background:#f8fafc;border-radius:12px;padding:10px}.metrics b{display:block;font-size:18px}.metrics span{font-size:12px;color:var(--muted)}
+.muted{color:var(--muted);font-size:14px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111827;color:#fff;padding:13px 20px;border-radius:99px;font-weight:700;box-shadow:0 10px 30px rgba(0,0,0,.25);display:none;z-index:50}
+.section{display:none}.section.active{display:block}
+.chip{background:#fef3c7;color:#92400e;padding:5px 10px;border-radius:99px;font-size:13px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="top"><div class="top-inner">
+<div class="logo">📞</div>
+<div><h1>CallReport Pro</h1><p>ডেইলি কল রিপোর্ট — প্রতিদিনের কাজ, এক জায়গায়, প্রফেশনালভাবে</p><p id="todayLine"></p></div>
+</div></div>
+
+<div class="wrap">
+<div class="tabs" role="tablist">
+<button id="tab-dash" class="active" onclick="showTab('dash')">📊 ড্যাশবোর্ড</button>
+<button id="tab-form" onclick="showTab('form')">➕ নতুন রিপোর্ট</button>
+<button id="tab-list" onclick="showTab('list')">📋 সব রিপোর্ট</button>
+</div>
+
+<!-- DASHBOARD -->
+<div id="sec-dash" class="section active">
+<div class="card">
+<h2>আজকের পারফরম্যান্স</h2><p class="sub" id="dashDateLabel"></p>
+<div class="stats">
+<div class="stat hot"><span class="ic">📞</span><b id="dCalls">0</b><span>Total Calls</span></div>
+<div class="stat"><span class="ic">✅</span><b id="dConnected">0</b><span>Connected</span></div>
+<div class="stat"><span class="ic">📝</span><b id="dReg">0</b><span>Registration</span></div>
+<div class="stat"><span class="ic">💎</span><b id="dFtd">0</b><span>FTD</span></div>
+<div class="stat"><span class="ic">🚫</span><b id="dInvalid">0</b><span>Invalid Number</span></div>
+<div class="stat hot"><span class="ic">💰</span><b id="dAmount">৳0</b><span>Total Recharged</span></div>
+</div>
+<div class="bar-row"><label><span>Connected Rate</span><span id="dConnPct">0%</span></label><div class="bar"><i id="dConnBar" style="width:0%"></i></div></div>
+<div class="bar-row"><label><span>Registration Rate</span><span id="dRegPct">0%</span></label><div class="bar"><i id="dRegBar" style="width:0%"></i></div></div>
+<div class="bar-row"><label><span>FTD Rate</span><span id="dFtdPct">0%</span></label><div class="bar"><i id="dFtdBar" style="width:0%"></i></div></div>
+<div class="row" style="margin-top:18px"><button class="btn btn-primary" style="width:auto" onclick="showTab('form')">➕ আজকের রিপোর্ট যোগ করুন</button><button class="btn btn-light btn-sm" onclick="showTab('list')">সব রিপোর্ট দেখুন →</button></div>
+</div>
+<div class="card"><h2>সর্বমোট (সব দিন)</h2><p class="sub">এখন পর্যন্ত সংরক্ষিত সব রিপোর্টের মোট হিসাব</p>
+<div class="stats">
+<div class="stat"><b id="aCalls">0</b><span>Total Calls</span></div>
+<div class="stat"><b id="aReg">0</b><span>Registration</span></div>
+<div class="stat"><b id="aFtd">0</b><span>FTD</span></div>
+<div class="stat hot"><b id="aAmount">৳0</b><span>Total Recharged</span></div>
+</div>
+<h2 style="margin-top:20px">সাম্প্রতিক রিপোর্ট</h2><div id="recent"></div>
+</div>
+</div>
+
+<!-- FORM -->
+<div id="sec-form" class="section">
+<div class="card">
+<h2 id="formTitle">➕ নতুন রিপোর্ট</h2><p class="sub">সব ঘর সঠিকভাবে পূরণ করুন, তারপর সংরক্ষণ করুন।</p>
+<form id="form">
+<div class="sec">মৌলিক তথ্য</div>
+<div class="grid">
+<div><label for="date">Date *</label><input id="date" type="date" required></div>
+<div><label for="time">Time *</label><input id="time" type="time" required></div>
+<div class="full"><label for="agent">Agent ID *</label><input id="agent" type="text" placeholder="যেমন: AG-101" required></div>
+</div>
+<div class="sec">কল পারফরম্যান্স</div>
+<div class="grid">
+<div><label for="totalCalls">Total Calls</label><input id="totalCalls" type="number" min="0" placeholder="0"></div>
+<div><label for="connected">Connected</label><input id="connected" type="number" min="0" placeholder="0"></div>
+<div><label for="registration">Registration</label><input id="registration" type="number" min="0" placeholder="0"></div>
+<div><label for="ftd">FTD</label><input id="ftd" type="number" min="0" placeholder="0"></div>
+<div class="full"><label for="invalid">Invalid Number</label><textarea id="invalid" placeholder="যে নম্বরগুলোতে কল কানেক্ট হয়নি / অকার্যকর — কমা দিয়ে লিখুন"></textarea><p class="muted" id="invalidCount"></p></div>
+</div>
+<div class="sec">রিচার্জ ও সমস্যা</div>
+<div class="grid">
+<div><label for="amount">Total Amount Recharged (৳)</label><input id="amount" type="number" min="0" step="0.01" placeholder="0"></div>
+<div class="full"><label for="problems">Problems</label><textarea id="problems" placeholder="কাজের সময় কোনো সমস্যা হলে লিখুন, না হলে 'কোনো সমস্যা হয়নি'"></textarea></div>
+</div>
+<button class="btn btn-primary" type="submit" id="saveBtn" style="margin-top:18px">💾 রিপোর্ট সংরক্ষণ করুন</button>
+<button class="btn btn-light" type="button" id="cancelEdit" style="display:none;width:100%;margin-top:8px">এডিট বাতিল করুন</button>
+</form>
+</div>
+</div>
+
+<!-- LIST -->
+<div id="sec-list" class="section">
+<div class="card">
+<h2>📋 সব রিপোর্ট</h2><p class="sub">তারিখ বা Agent ID দিয়ে খুঁজুন, যেকোনো রিপোর্ট এক ক্লিকে কপি করুন।</p>
+<div class="grid">
+<div><label for="filterDate">তারিখ</label><input id="filterDate" type="date"></div>
+<div><label for="filterAgent">Agent ID / খোঁজ</label><input id="filterAgent" type="text" placeholder="Agent ID লিখুন"></div>
+</div>
+<div class="row" style="margin-top:14px">
+<button class="btn btn-light btn-sm" id="showAll">সব দেখান</button>
+<button class="btn btn-light btn-sm" id="showToday">আজকেরটা</button>
+<button class="btn btn-light btn-sm" id="exportCsv">⬇️ CSV ডাউনলোড</button>
+<span class="chip" id="listCount"></span>
+</div>
+<div id="list"></div>
+<p class="muted" id="emptyMsg">এখনো কোনো রিপোর্ট নেই। “নতুন রিপোর্ট” ট্যাব থেকে প্রথম রিপোর্টটি যোগ করুন।</p>
+</div>
+</div>
+
+<div class="card"><p class="muted" style="margin:0">💡 <b>জমা দেওয়ার নিয়ম:</b> রিপোর্ট সংরক্ষণের পর “ফরম্যাট কপি করুন” চাপ দিলেই আপনার দেওয়া ফরম্যাটে — Date, Time, Agent ID, Total Calls, Connected, Registration, FTD, Invalid Number, Total Amount Recharged, Problems — পুরো রিপোর্ট কপি হবে। ডেটা আপনার ফোন/ব্রাউজারেই থাকে।</p></div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const KEY='daily_reports_v1';
+let reports=JSON.parse(localStorage.getItem(KEY)||'[]');
+let editId=null;
+const $=id=>document.getElementById(id);
+const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const nowTime=()=>{const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+const num=v=>Number(v||0);
+const invalidList=s=>(s||'').split(',').map(x=>x.trim()).filter(Boolean);
+const fmt=n=>'৳'+num(n).toLocaleString('en-US');
+function formatReport(r){return `Date: ${r.date}\nTime: ${r.time}\nAgent ID: ${r.agent}\nTotal Calls: ${r.totalCalls}\nConnected: ${r.connected}\nRegistration: ${r.registration}\nFTD: ${r.ftd}\nInvalid Number: ${r.invalid||'None'}\nTotal Amount Recharged: ${r.amount}\nProblems: ${r.problems||'None'}`;}
+function save(){localStorage.setItem(KEY,JSON.stringify(reports))}
+function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2600)}
+function showTab(name){['dash','form','list'].forEach(k=>{$('sec-'+k).classList.toggle('active',k===name);$('tab-'+k).classList.toggle('active',k===name)});window.scrollTo({top:0,behavior:'smooth'});if(name==='list'||name==='dash')render();}
+function filtered(){let list=[...reports];const d=$('filterDate').value,a=$('filterAgent').value.trim().toLowerCase();if(d)list=list.filter(r=>r.date===d);if(a)list=list.filter(r=>r.agent.toLowerCase().includes(a)||(r.problems||'').toLowerCase().includes(a));return list.sort((x,y)=>(y.date+y.time).localeCompare(x.date+x.time));}
+function pct(a,b){return b?Math.round(a/b*100):0}
+function render(){
+const today=todayStr(), todays=reports.filter(r=>r.date===today);
+const sum=(list,f)=>list.reduce((s,r)=>s+num(r[f]),0);
+$('todayLine').textContent='আজ: '+today;
+$('dashDateLabel').textContent='তারিখ: '+today+' • মোট রিপোর্ট: '+todays.length+'টি';
+$('dCalls').textContent=sum(todays,'totalCalls');$('dConnected').textContent=sum(todays,'connected');$('dReg').textContent=sum(todays,'registration');$('dFtd').textContent=sum(todays,'ftd');
+$('dInvalid').textContent=todays.reduce((s,r)=>s+invalidList(r.invalid).length,0);$('dAmount').textContent=fmt(sum(todays,'amount'));
+const calls=sum(todays,'totalCalls');
+$('dConnPct').textContent=pct(sum(todays,'connected'),calls)+'%';$('dConnBar').style.width=pct(sum(todays,'connected'),calls)+'%';
+$('dRegPct').textContent=pct(sum(todays,'registration'),calls)+'%';$('dRegBar').style.width=pct(sum(todays,'registration'),calls)+'%';
+$('dFtdPct').textContent=pct(sum(todays,'ftd'),calls)+'%';$('dFtdBar').style.width=pct(sum(todays,'ftd'),calls)+'%';
+$('aCalls').textContent=sum(reports,'totalCalls');$('aReg').textContent=sum(reports,'registration');$('aFtd').textContent=sum(reports,'ftd');$('aAmount').textContent=fmt(sum(reports,'amount'));
+const recent=[...reports].sort((x,y)=>(y.date+y.time).localeCompare(x.date+x.time)).slice(0,3);
+$('recent').innerHTML=recent.length?recent.map(r=>`<div class="report" style="margin-top:10px"><b>${r.date} • ${r.time}</b> <span class="badge">${r.agent}</span> <span class="badge-money badge">${fmt(r.amount)}</span><div class="metrics" style="margin-top:10px"><div><b>${r.totalCalls}</b><span>Calls</span></div><div><b>${r.connected}</b><span>Connected</span></div><div><b>${r.registration}</b><span>Registration</span></div><div><b>${r.ftd}</b><span>FTD</span></div></div><div class="row" style="margin-top:10px"><button class="btn btn-light btn-sm" onclick="copyReport('${r.id}')">📋 কপি করুন</button><button class="btn btn-light btn-sm" onclick="showTab('list')">বিস্তারিত →</button></div></div>`).join(''):'<p class="muted">এখনো কোনো রিপোর্ট নেই।</p>';
+const list=filtered();
+$('listCount').textContent=list.length+'টি রিপোর্ট';
+$('emptyMsg').style.display=list.length?'none':'block';
+$('list').innerHTML=list.map(r=>`<div class="report"><div class="row"><b>${r.date} • ${r.time}</b><span class="badge">${r.agent}</span><span class="badge-money badge">${fmt(r.amount)}</span></div><div class="metrics" style="margin-top:12px"><div><b>${r.totalCalls}</b><span>Total Calls</span></div><div><b>${r.connected}</b><span>Connected</span></div><div><b>${r.registration}</b><span>Registration</span></div><div><b>${r.ftd}</b><span>FTD</span></div></div><pre>${formatReport(r).replace(/</g,'&lt;')}</pre><div class="row"><button class="btn btn-primary btn-sm" onclick="copyReport('${r.id}')">📋 ফরম্যাট কপি করুন</button><button class="btn btn-light btn-sm" onclick="editReport('${r.id}')">✏️ এডিট</button><button class="btn btn-danger btn-sm" onclick="deleteReport('${r.id}')">🗑️ মুছুন</button></div></div>`).join('');
+}
+window.copyReport=async id=>{const r=reports.find(x=>x.id===id);if(!r)return;try{await navigator.clipboard.writeText(formatReport(r));toast('✅ রিপোর্ট কপি হয়েছে! এখন পেস্ট করে জমা দিন।')}catch(e){const t=document.createElement('textarea');t.value=formatReport(r);document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();toast('✅ রিপোর্ট কপি হয়েছে!')}};
+window.editReport=id=>{const r=reports.find(x=>x.id===id);if(!r)return;editId=id;$('date').value=r.date;$('time').value=r.time;$('agent').value=r.agent;$('totalCalls').value=r.totalCalls;$('connected').value=r.connected;$('registration').value=r.registration;$('ftd').value=r.ftd;$('invalid').value=r.invalid;$('amount').value=r.amount;$('problems').value=r.problems;$('formTitle').textContent='✏️ রিপোর্ট এডিট করুন';$('saveBtn').textContent='✅ পরিবর্তন সংরক্ষণ করুন';$('cancelEdit').style.display='block';showTab('form');};
+window.deleteReport=id=>{if(confirm('এই রিপোর্টটি মুছে ফেলতে চান?')){reports=reports.filter(r=>r.id!==id);save();render();toast('রিপোর্ট মুছে ফেলা হয়েছে');}};
+$('form').addEventListener('submit',e=>{e.preventDefault();const r={id:editId||Date.now().toString(),date:$('date').value,time:$('time').value,agent:$('agent').value.trim(),totalCalls:num($('totalCalls').value),connected:num($('connected').value),registration:num($('registration').value),ftd:num($('ftd').value),invalid:$('invalid').value.trim(),amount:num($('amount').value),problems:$('problems').value.trim()};if(editId){reports=reports.map(x=>x.id===editId?r:x)}else{reports.unshift(r)}localStorage.setItem('last_agent',r.agent);save();editId=null;$('formTitle').textContent='➕ নতুন রিপোর্ট';$('saveBtn').textContent='💾 রিপোর্ট সংরক্ষণ করুন';$('cancelEdit').style.display='none';e.target.reset();$('date').value=todayStr();$('time').value=nowTime();$('agent').value=localStorage.getItem('last_agent')||'';render();showTab('dash');toast('✅ রিপোর্ট সংরক্ষণ হয়েছে!');});
+$('cancelEdit').onclick=()=>{editId=null;$('formTitle').textContent='➕ নতুন রিপোর্ট';$('saveBtn').textContent='💾 রিপোর্ট সংরক্ষণ করুন';$('cancelEdit').style.display='none';$('form').reset();$('date').value=todayStr();$('time').value=nowTime();};
+$('invalid').addEventListener('input',()=>{const c=invalidList($('invalid').value).length;$('invalidCount').textContent=c?`Invalid নম্বর: ${c}টি`:'';});
+$('filterDate').addEventListener('change',render);$('filterAgent').addEventListener('input',render);
+$('showAll').onclick=()=>{$('filterDate').value='';$('filterAgent').value='';render();};
+$('showToday').onclick=()=>{$('filterDate').value=todayStr();render();};
+$('exportCsv').onclick=()=>{const rows=[['Date','Time','Agent ID','Total Calls','Connected','Registration','FTD','Invalid Number','Total Amount Recharged','Problems']];filtered().forEach(r=>rows.push([r.date,r.time,r.agent,r.totalCalls,r.connected,r.registration,r.ftd,r.invalid,r.amount,r.problems]));const csv=rows.map(row=>row.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='daily-reports.csv';a.click();toast('CSV ডাউনলোড শুরু হয়েছে');};
+$('date').value=todayStr();$('time').value=nowTime();$('agent').value=localStorage.getItem('last_agent')||'';
+render();
+</script>
+</body>
+</html>
