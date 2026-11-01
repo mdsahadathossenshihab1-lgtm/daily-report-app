@@ -6,6 +6,8 @@
 <meta name="theme-color" content="#4f46e5">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <title>CallReport Pro — ডেইলি কল রিপোর্ট</title>
 <style>
 :root{--indigo:#4f46e5;--violet:#7c3aed;--teal:#0f766e;--bg:#eef2ff;--card:#fff;--text:#111827;--muted:#6b7280;--line:#e5e7eb;--radius:18px}
@@ -58,6 +60,7 @@ textarea{min-height:72px;resize:vertical}.full{grid-column:1/-1}
 </div></div>
 
 <div class="wrap">
+<p id="syncStatus" style="background:#fff;border-radius:12px;padding:10px 14px;margin-top:12px;font-size:14px;font-weight:700">🔥 Firebase: সংযোগ হচ্ছে...</p>
 <div class="tabs" role="tablist">
 <button id="tab-dash" class="active" onclick="showTab('dash')">📊 ড্যাশবোর্ড</button>
 <button id="tab-form" onclick="showTab('form')">➕ নতুন রিপোর্ট</button>
@@ -109,16 +112,23 @@ textarea{min-height:72px;resize:vertical}.full{grid-column:1/-1}
 <div><label for="connected">Connected</label><input id="connected" type="number" min="0" placeholder="0"></div>
 <div><label for="registration">Registration</label><input id="registration" type="number" min="0" placeholder="0"></div>
 <div><label for="ftd">FTD</label><input id="ftd" type="number" min="0" placeholder="0"></div>
-<div class="full"><label for="invalid">Invalid Number</label><textarea id="invalid" placeholder="যে নম্বরগুলোতে কল কানেক্ট হয়নি / অকার্যকর — কমা দিয়ে লিখুন"></textarea><p class="muted" id="invalidCount"></p></div>
+<div class="full"><label for="invalid">Invalid Number</label><textarea id="invalid" placeholder="Invalid নম্বরগুলো এখানে পেস্ট করুন — কমা, স্পেস বা নতুন লাইনে, যেকোনোভাবে"></textarea><p class="muted" id="invalidCount"></p></div>
 </div>
 <div class="sec">রিচার্জ ও সমস্যা</div>
 <div class="grid">
 <div><label for="amount">Total Amount Recharged (৳)</label><input id="amount" type="number" min="0" step="0.01" placeholder="0"></div>
 <div class="full"><label for="problems">Problems</label><textarea id="problems" placeholder="কাজের সময় কোনো সমস্যা হলে লিখুন, না হলে 'কোনো সমস্যা হয়নি'"></textarea></div>
 </div>
-<button class="btn btn-primary" type="submit" id="saveBtn" style="margin-top:18px">💾 রিপোর্ট সংরক্ষণ করুন</button>
+<button class="btn btn-primary" type="submit" id="saveBtn" style="margin-top:18px">💾 পুরো রিপোর্ট সেভ করুন — অ্যাডমিনকে পাঠানোর জন্য তৈরি হবে</button>
+<button class="btn btn-light" type="button" id="quickBtn" style="width:100%;margin-top:8px">⚡ শুধু Agent ID + Invalid নম্বর সেভ করুন (বাকি সব পরে ফিলাপ করা যাবে)</button>
+<p class="muted" style="margin-top:10px">কল করার সময় শুধু Invalid নম্বর পেলেই উপরের Quick বাটনে সেভ করুন, সবকিছু ফিলাপ করতে হবে না। শুধু Agent ID দিলেই হবে। পরে ওই রিপোর্ট Edit করে পুরো ফিলাপ করলেই অ্যাডমিন রিপোর্ট তৈরি হবে।</p>
 <button class="btn btn-light" type="button" id="cancelEdit" style="display:none;width:100%;margin-top:8px">এডিট বাতিল করুন</button>
 </form>
+</div>
+<div class="card" id="adminReportCard" style="display:none">
+<h2>📤 অ্যাডমিনকে পাঠানোর রিপোর্ট</h2><p class="sub">নিচের রিপোর্টটা কপি করে অ্যাডমিনকে পাঠিয়ে দিন।</p>
+<pre id="adminReportText" style="white-space:pre-wrap;font-family:inherit;background:#f8fafc;border:1px solid #e5e7eb;padding:13px;border-radius:12px;font-size:14px;line-height:1.6"></pre>
+<button class="btn btn-primary" id="adminCopyBtn">📋 কপি করুন — অ্যাডমিনকে পাঠান</button>
 </div>
 </div>
 
@@ -146,13 +156,20 @@ textarea{min-height:72px;resize:vertical}.full{grid-column:1/-1}
 <div class="toast" id="toast"></div>
 <script>
 const KEY='daily_reports_v1';
+let firebaseDB=null, firebaseReady=false, firebaseLoaded=false;
+const firebaseConfig={apiKey:"AIzaSyB03sx0s65ycG3MYcSbB2HfGMigs9DI-r4",authDomain:"fir-a-topup-bazar.firebaseapp.com",databaseURL:"https://fir-a-topup-bazar-default-rtdb.firebaseio.com",projectId:"fir-a-topup-bazar",storageBucket:"fir-a-topup-bazar.firebasestorage.app",messagingSenderId:"928168996366",appId:"1:928168996366:web:fd879d795202891ee9965f",measurementId:"G-9QBLYHR817"};
+function setSync(t){const e=$('syncStatus');if(e)e.textContent=t;}
+function syncToFirebase(r,del){if(!firebaseDB)return;try{const ref=firebaseDB.ref('daily_reports/'+r.id);if(del)ref.remove();else ref.set(r);}catch(e){}}
+function loadFromFirebase(){if(!firebaseDB)return;try{firebaseDB.ref('daily_reports').on('value',snap=>{const val=snap.val();if(!val){if(reports.length&&!firebaseLoaded){reports.forEach(r=>syncToFirebase(r));}firebaseLoaded=true;setSync('🔥 Firebase: সংযুক্ত — রিপোর্ট ক্লাউডে সেভ হবে');return;}const merged={};reports.forEach(r=>merged[r.id]=r);Object.values(val).forEach(r=>merged[r.id]=r);const list=Object.values(merged).sort((x,y)=>(y.date+y.time).localeCompare(x.date+x.time));reports.forEach(r=>{if(!val[r.id])syncToFirebase(r);});if(JSON.stringify(list)!==JSON.stringify(reports)){reports=list;save();render();}firebaseLoaded=true;setSync('🔥 Firebase: সংযুক্ত — রিপোর্ট ক্লাউডে সেভ হবে');});}catch(e){setSync('⚠️ Firebase সংযোগ নেই — লোকালি সেভ হচ্ছে');}}
+try{if(window.firebase){firebase.initializeApp(firebaseConfig);firebaseDB=firebase.database();firebaseReady=true;}}catch(e){setSync('⚠️ Firebase সংযোগ নেই — লোকালি সেভ হচ্ছে');}
+
 let reports=JSON.parse(localStorage.getItem(KEY)||'[]');
 let editId=null;
 const $=id=>document.getElementById(id);
 const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const nowTime=()=>{const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
 const num=v=>Number(v||0);
-const invalidList=s=>(s||'').split(',').map(x=>x.trim()).filter(Boolean);
+const invalidList=s=>{const seen=new Set();return (s||'').split(/[\s,;]+/).map(x=>x.trim()).filter(x=>x && !seen.has(x) && seen.add(x));};
 const fmt=n=>'৳'+num(n).toLocaleString('en-US');
 function formatReport(r){return `Date: ${r.date}\nTime: ${r.time}\nAgent ID: ${r.agent}\nTotal Calls: ${r.totalCalls}\nConnected: ${r.connected}\nRegistration: ${r.registration}\nFTD: ${r.ftd}\nInvalid Number: ${r.invalid||'None'}\nTotal Amount Recharged: ${r.amount}\nProblems: ${r.problems||'None'}`;}
 function save(){localStorage.setItem(KEY,JSON.stringify(reports))}
@@ -177,13 +194,23 @@ $('recent').innerHTML=recent.length?recent.map(r=>`<div class="report" style="ma
 const list=filtered();
 $('listCount').textContent=list.length+'টি রিপোর্ট';
 $('emptyMsg').style.display=list.length?'none':'block';
-$('list').innerHTML=list.map(r=>`<div class="report"><div class="row"><b>${r.date} • ${r.time}</b><span class="badge">${r.agent}</span><span class="badge-money badge">${fmt(r.amount)}</span></div><div class="metrics" style="margin-top:12px"><div><b>${r.totalCalls}</b><span>Total Calls</span></div><div><b>${r.connected}</b><span>Connected</span></div><div><b>${r.registration}</b><span>Registration</span></div><div><b>${r.ftd}</b><span>FTD</span></div></div><pre>${formatReport(r).replace(/</g,'&lt;')}</pre><div class="row"><button class="btn btn-primary btn-sm" onclick="copyReport('${r.id}')">📋 ফরম্যাট কপি করুন</button><button class="btn btn-light btn-sm" onclick="editReport('${r.id}')">✏️ এডিট</button><button class="btn btn-danger btn-sm" onclick="deleteReport('${r.id}')">🗑️ মুছুন</button></div></div>`).join('');
+$('list').innerHTML=list.map(r=>`<div class="report"><div class="row"><b>${r.date} • ${r.time}</b><span class="badge">${r.agent}</span><span class="badge">${r.status==='quick'?'⚡ শুধু Invalid':'✅ সম্পূর্ণ'}</span><span class="badge-money badge">${fmt(r.amount)}</span></div><div class="metrics" style="margin-top:12px"><div><b>${r.totalCalls}</b><span>Total Calls</span></div><div><b>${r.connected}</b><span>Connected</span></div><div><b>${r.registration}</b><span>Registration</span></div><div><b>${r.ftd}</b><span>FTD</span></div></div><pre>${formatReport(r).replace(/</g,'&lt;')}</pre><div class="row"><button class="btn btn-primary btn-sm" onclick="copyReport('${r.id}')">📋 ফরম্যাট কপি করুন</button><button class="btn btn-light btn-sm" onclick="editReport('${r.id}')">✏️ এডিট</button><button class="btn btn-danger btn-sm" onclick="deleteReport('${r.id}')">🗑️ মুছুন</button></div></div>`).join('');
 }
 window.copyReport=async id=>{const r=reports.find(x=>x.id===id);if(!r)return;try{await navigator.clipboard.writeText(formatReport(r));toast('✅ রিপোর্ট কপি হয়েছে! এখন পেস্ট করে জমা দিন।')}catch(e){const t=document.createElement('textarea');t.value=formatReport(r);document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();toast('✅ রিপোর্ট কপি হয়েছে!')}};
 window.editReport=id=>{const r=reports.find(x=>x.id===id);if(!r)return;editId=id;$('date').value=r.date;$('time').value=r.time;$('agent').value=r.agent;$('totalCalls').value=r.totalCalls;$('connected').value=r.connected;$('registration').value=r.registration;$('ftd').value=r.ftd;$('invalid').value=r.invalid;$('amount').value=r.amount;$('problems').value=r.problems;$('formTitle').textContent='✏️ রিপোর্ট এডিট করুন';$('saveBtn').textContent='✅ পরিবর্তন সংরক্ষণ করুন';$('cancelEdit').style.display='block';showTab('form');};
-window.deleteReport=id=>{if(confirm('এই রিপোর্টটি মুছে ফেলতে চান?')){reports=reports.filter(r=>r.id!==id);save();render();toast('রিপোর্ট মুছে ফেলা হয়েছে');}};
-$('form').addEventListener('submit',e=>{e.preventDefault();const r={id:editId||Date.now().toString(),date:$('date').value,time:$('time').value,agent:$('agent').value.trim(),totalCalls:num($('totalCalls').value),connected:num($('connected').value),registration:num($('registration').value),ftd:num($('ftd').value),invalid:$('invalid').value.trim(),amount:num($('amount').value),problems:$('problems').value.trim()};if(editId){reports=reports.map(x=>x.id===editId?r:x)}else{reports.unshift(r)}localStorage.setItem('last_agent',r.agent);save();editId=null;$('formTitle').textContent='➕ নতুন রিপোর্ট';$('saveBtn').textContent='💾 রিপোর্ট সংরক্ষণ করুন';$('cancelEdit').style.display='none';e.target.reset();$('date').value=todayStr();$('time').value=nowTime();$('agent').value=localStorage.getItem('last_agent')||'';render();showTab('dash');toast('✅ রিপোর্ট সংরক্ষণ হয়েছে!');});
-$('cancelEdit').onclick=()=>{editId=null;$('formTitle').textContent='➕ নতুন রিপোর্ট';$('saveBtn').textContent='💾 রিপোর্ট সংরক্ষণ করুন';$('cancelEdit').style.display='none';$('form').reset();$('date').value=todayStr();$('time').value=nowTime();};
+window.deleteReport=id=>{if(confirm('এই রিপোর্টটি মুছে ফেলতে চান?')){const del=reports.find(r=>r.id===id);reports=reports.filter(r=>r.id!==id);save();if(del)syncToFirebase(del,true);render();toast('রিপোর্ট মুছে ফেলা হয়েছে');}};
+window.showAdminReport=r=>{const c=$('adminReportCard');if(!c)return;c.style.display='block';$('adminReportText').textContent=formatReport(r);$('adminCopyBtn').onclick=()=>copyReport(r.id);c.scrollIntoView({behavior:'smooth'});};
+$('quickBtn').onclick=()=>{
+const agent=$('agent').value.trim(), invalid=invalidList($('invalid').value).join(', ');
+if(!agent){alert('Quick সেভের জন্য Agent ID দিন।');$('agent').focus();return;}
+if(!invalid){alert('Quick সেভের জন্য অন্তত একটি Invalid নম্বর পেস্ট করুন।');$('invalid').focus();return;}
+const r={id:editId||Date.now().toString(),date:$('date').value||todayStr(),time:$('time').value||nowTime(),agent,totalCalls:0,connected:0,registration:0,ftd:0,invalid,amount:0,problems:'',status:'quick'};
+if(editId){reports=reports.map(x=>x.id===editId?r:x);}else{reports.unshift(r);}
+localStorage.setItem('last_agent',agent);save();syncToFirebase(r);editId=null;$('formTitle').textContent='➕ নতুন রিপোর্ট';$('saveBtn').textContent='💾 পুরো রিপোর্ট সেভ করুন — অ্যাডমিনকে পাঠানোর জন্য তৈরি হবে';$('cancelEdit').style.display='none';
+$('form').reset();$('date').value=todayStr();$('time').value=nowTime();$('agent').value=localStorage.getItem('last_agent')||'';render();showTab('list');toast('⚡ Invalid নম্বর সেভ হয়েছে! পরে Edit করে পুরো রিপোর্ট বানাতে পারবেন।');
+};
+$('form').addEventListener('submit',e=>{e.preventDefault();const r={id:editId||Date.now().toString(),date:$('date').value,time:$('time').value,agent:$('agent').value.trim(),totalCalls:num($('totalCalls').value),connected:num($('connected').value),registration:num($('registration').value),ftd:num($('ftd').value),invalid:invalidList($('invalid').value).join(', '),amount:num($('amount').value),problems:$('problems').value.trim(),status:'full'};if(editId){reports=reports.map(x=>x.id===editId?r:x)}else{reports.unshift(r)}localStorage.setItem('last_agent',r.agent);save();syncToFirebase(r);editId=null;$('formTitle').textContent='➕ নতুন রিপোর্ট';$('saveBtn').textContent='💾 পুরো রিপোর্ট সেভ করুন — অ্যাডমিনকে পাঠানোর জন্য তৈরি হবে';$('cancelEdit').style.display='none';e.target.reset();$('date').value=todayStr();$('time').value=nowTime();$('agent').value=localStorage.getItem('last_agent')||'';render();showTab('form');showAdminReport(r);toast('✅ পুরো রিপোর্ট সেভ হয়েছে! নিচের রিপোর্টটা কপি করে অ্যাডমিনকে পাঠান।');});
+$('cancelEdit').onclick=()=>{editId=null;$('formTitle').textContent='➕ নতুন রিপোর্ট';$('saveBtn').textContent='💾 পুরো রিপোর্ট সেভ করুন — অ্যাডমিনকে পাঠানোর জন্য তৈরি হবে';$('cancelEdit').style.display='none';$('form').reset();$('date').value=todayStr();$('time').value=nowTime();};
 $('invalid').addEventListener('input',()=>{const c=invalidList($('invalid').value).length;$('invalidCount').textContent=c?`Invalid নম্বর: ${c}টি`:'';});
 $('filterDate').addEventListener('change',render);$('filterAgent').addEventListener('input',render);
 $('showAll').onclick=()=>{$('filterDate').value='';$('filterAgent').value='';render();};
@@ -191,6 +218,7 @@ $('showToday').onclick=()=>{$('filterDate').value=todayStr();render();};
 $('exportCsv').onclick=()=>{const rows=[['Date','Time','Agent ID','Total Calls','Connected','Registration','FTD','Invalid Number','Total Amount Recharged','Problems']];filtered().forEach(r=>rows.push([r.date,r.time,r.agent,r.totalCalls,r.connected,r.registration,r.ftd,r.invalid,r.amount,r.problems]));const csv=rows.map(row=>row.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='daily-reports.csv';a.click();toast('CSV ডাউনলোড শুরু হয়েছে');};
 $('date').value=todayStr();$('time').value=nowTime();$('agent').value=localStorage.getItem('last_agent')||'';
 render();
+loadFromFirebase();
 </script>
 </body>
 </html>
