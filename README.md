@@ -36,3 +36,10 @@
 - No email/password fields, no Sign Up form. Email/Password provider to be disabled in Firebase.
 - Authorized domain daily-report-app-chi-red.vercel.app must be added for Google popup to work from live app.
 - Per-user data path and rules unchanged: daily_reports/{uid}/{reportId}.
+
+## APK v1 (2026-11-01, no Play Store)
+- Android APK: callreport-pro.apk, package com.callreport.pro, version 1.0, 21KB, debug-signed (v2+v3 verified, 1 signer, same debug keystore as Lead Finder builds - reuse it for updates).
+- WebView wrapper loading https://daily-report-app-chi-red.vercel.app/ (always latest website version), JavaScript + DOM storage enabled, popup support for Google sign-in, Chrome-like UA.
+- Min SDK 24, target SDK 34, INTERNET + ACCESS_NETWORK_STATE only.
+- Website has an APK download card linking to callreport-pro.apk (served by Vercel from repo root). Install from website, allow Install unknown apps when asked. NOT a Play Store release, NOT device-tested on a real phone yet - phone install + Google login inside the app still need user test.
+- NOTE: 2 TEST-001 reports from v5 test are still in Firebase for shihabno.18 until in-person delete is verified - APK users logging in as that account will see them until cleanup is done.
