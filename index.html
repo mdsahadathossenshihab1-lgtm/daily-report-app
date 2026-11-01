@@ -8,6 +8,7 @@
 <link rel="icon" href="icon.svg">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <title>CallReport Pro — ডেইলি কল রিপোর্ট</title>
 <style>
 :root{--indigo:#4f46e5;--violet:#7c3aed;--teal:#0f766e;--bg:#eef2ff;--card:#fff;--text:#111827;--muted:#6b7280;--line:#e5e7eb;--radius:18px}
@@ -60,6 +61,13 @@ textarea{min-height:72px;resize:vertical}.full{grid-column:1/-1}
 </div></div>
 
 <div class="wrap">
+<div class="card" id="authCard">
+<h2>🔐 লগইন করুন</h2><p class="sub">Continue with Google দিয়ে লগইন করুন। প্রত্যেক এজেন্টের আলাদা Google অ্যাকাউন্ট, আলাদা ডেটা।</p>
+<div class="row" style="margin-top:14px"><button class="btn btn-primary" id="googleBtn" style="width:auto">▶ Continue with Google</button></div>
+<p class="muted" id="authMsg"></p>
+</div>
+<div class="row card" id="userBar" style="display:none;justify-content:space-between"><span>👤 লগইন: <b id="userEmail"></b></span><button class="btn btn-danger btn-sm" id="logoutBtn">লগআউট</button></div>
+<div id="appContent" style="display:none">
 <p id="syncStatus" style="background:#fff;border-radius:12px;padding:10px 14px;margin-top:12px;font-size:14px;font-weight:700">🔥 Firebase: সংযোগ হচ্ছে...</p>
 <div class="tabs" role="tablist">
 <button id="tab-dash" class="active" onclick="showTab('dash')">📊 ড্যাশবোর্ড</button>
@@ -151,7 +159,8 @@ textarea{min-height:72px;resize:vertical}.full{grid-column:1/-1}
 </div>
 </div>
 
-<div class="card"><p class="muted" style="margin:0">💡 <b>জমা দেওয়ার নিয়ম:</b> রিপোর্ট সংরক্ষণের পর “ফরম্যাট কপি করুন” চাপ দিলেই আপনার দেওয়া ফরম্যাটে — Date, Time, Agent ID, Total Calls, Connected, Registration, FTD, Invalid Number, Total Amount Recharged, Problems — পুরো রিপোর্ট কপি হবে। ডেটা আপনার ফোন/ব্রাউজারেই থাকে।</p></div>
+<div class="card"><p class="muted" style="margin:0">💡 <b>জমা দেওয়ার নিয়ম:</b> রিপোর্ট সংরক্ষণের পর “ফরম্যাট কপি করুন” চাপ দিলেই আপনার দেওয়া ফরম্যাটে — Date, Time, Agent ID, Total Calls, Connected, Registration, FTD, Invalid Number, Total Amount Recharged, Problems — পুরো রিপোর্ট কপি হবে। ডেটা Firebase-এ, আপনার নিজের অ্যাকাউন্টে আলাদাভাবে থাকে।</p></div>
+</div>
 </div>
 <div class="toast" id="toast"></div>
 <script>
@@ -159,11 +168,12 @@ const KEY='daily_reports_v1';
 let firebaseDB=null, firebaseReady=false, firebaseLoaded=false;
 const firebaseConfig={apiKey:"AIzaSyB03sx0s65ycG3MYcSbB2HfGMigs9DI-r4",authDomain:"fir-a-topup-bazar.firebaseapp.com",databaseURL:"https://fir-a-topup-bazar-default-rtdb.firebaseio.com",projectId:"fir-a-topup-bazar",storageBucket:"fir-a-topup-bazar.firebasestorage.app",messagingSenderId:"928168996366",appId:"1:928168996366:web:fd879d795202891ee9965f",measurementId:"G-9QBLYHR817"};
 function setSync(t){const e=$('syncStatus');if(e)e.textContent=t;}
-function syncToFirebase(r,del){if(!firebaseDB)return;try{const ref=firebaseDB.ref('daily_reports/'+r.id);if(del)ref.remove();else ref.set(r);}catch(e){}}
-function loadFromFirebase(){if(!firebaseDB)return;try{firebaseDB.ref('daily_reports').on('value',snap=>{const val=snap.val();if(!val){if(reports.length&&!firebaseLoaded){reports.forEach(r=>syncToFirebase(r));}firebaseLoaded=true;setSync('🔥 Firebase: সংযুক্ত — রিপোর্ট ক্লাউডে সেভ হবে');return;}const merged={};reports.forEach(r=>merged[r.id]=r);Object.values(val).forEach(r=>merged[r.id]=r);const list=Object.values(merged).sort((x,y)=>(y.date+y.time).localeCompare(x.date+x.time));reports.forEach(r=>{if(!val[r.id])syncToFirebase(r);});if(JSON.stringify(list)!==JSON.stringify(reports)){reports=list;save();render();}firebaseLoaded=true;setSync('🔥 Firebase: সংযুক্ত — রিপোর্ট ক্লাউডে সেভ হবে');});}catch(e){setSync('⚠️ Firebase সংযোগ নেই — লোকালি সেভ হচ্ছে');}}
+function syncToFirebase(r,del){if(!firebaseDB||!currentUser)return;try{if(!del)r.ownerUid=currentUser.uid;const ref=firebaseDB.ref('daily_reports/'+currentUser.uid+'/'+r.id);if(del)ref.remove();else ref.set(r);}catch(e){}}
+function loadFromFirebase(){if(!firebaseDB)return;try{if(!currentUser)return;if(fbListener)fbListener.off();fbListener=firebaseDB.ref('daily_reports/'+currentUser.uid);fbListener.on('value',snap=>{const val=snap.val();if(!val){if(reports.length&&!firebaseLoaded){reports.forEach(r=>syncToFirebase(r));}firebaseLoaded=true;setSync('🔥 Firebase: সংযুক্ত — রিপোর্ট ক্লাউডে সেভ হবে');return;}const merged={};reports.forEach(r=>merged[r.id]=r);Object.values(val).forEach(r=>merged[r.id]=r);const list=Object.values(merged).sort((x,y)=>(y.date+y.time).localeCompare(x.date+x.time));reports.forEach(r=>{if(!val[r.id])syncToFirebase(r);});if(JSON.stringify(list)!==JSON.stringify(reports)){reports=list;save();render();}firebaseLoaded=true;setSync('🔥 Firebase: সংযুক্ত — রিপোর্ট ক্লাউডে সেভ হবে');});}catch(e){setSync('⚠️ Firebase সংযোগ নেই — লোকালি সেভ হচ্ছে');}}
 try{if(window.firebase){firebase.initializeApp(firebaseConfig);firebaseDB=firebase.database();firebaseReady=true;}}catch(e){setSync('⚠️ Firebase সংযোগ নেই — লোকালি সেভ হচ্ছে');}
 
-let reports=JSON.parse(localStorage.getItem(KEY)||'[]');
+let reports=[];
+let currentUser=null, fbListener=null;
 let editId=null;
 const $=id=>document.getElementById(id);
 const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
@@ -172,7 +182,7 @@ const num=v=>Number(v||0);
 const invalidList=s=>{const seen=new Set();return (s||'').split(/[\s,;]+/).map(x=>x.trim()).filter(x=>x && !seen.has(x) && seen.add(x));};
 const fmt=n=>'৳'+num(n).toLocaleString('en-US');
 function formatReport(r){return `Date: ${r.date}\nTime: ${r.time}\nAgent ID: ${r.agent}\nTotal Calls: ${r.totalCalls}\nConnected: ${r.connected}\nRegistration: ${r.registration}\nFTD: ${r.ftd}\nInvalid Number: ${r.invalid||'None'}\nTotal Amount Recharged: ${r.amount}\nProblems: ${r.problems||'None'}`;}
-function save(){localStorage.setItem(KEY,JSON.stringify(reports))}
+function save(){localStorage.setItem(currentUser?KEY+'_'+currentUser.uid:KEY,JSON.stringify(reports))}
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2600)}
 function showTab(name){['dash','form','list'].forEach(k=>{$('sec-'+k).classList.toggle('active',k===name);$('tab-'+k).classList.toggle('active',k===name)});window.scrollTo({top:0,behavior:'smooth'});if(name==='list'||name==='dash')render();}
 function filtered(){let list=[...reports];const d=$('filterDate').value,a=$('filterAgent').value.trim().toLowerCase();if(d)list=list.filter(r=>r.date===d);if(a)list=list.filter(r=>r.agent.toLowerCase().includes(a)||(r.problems||'').toLowerCase().includes(a));return list.sort((x,y)=>(y.date+y.time).localeCompare(x.date+x.time));}
@@ -204,12 +214,12 @@ $('quickBtn').onclick=()=>{
 const agent=$('agent').value.trim(), invalid=invalidList($('invalid').value).join(', ');
 if(!agent){alert('Quick সেভের জন্য Agent ID দিন।');$('agent').focus();return;}
 if(!invalid){alert('Quick সেভের জন্য অন্তত একটি Invalid নম্বর পেস্ট করুন।');$('invalid').focus();return;}
-const r={id:editId||Date.now().toString(),date:$('date').value||todayStr(),time:$('time').value||nowTime(),agent,totalCalls:0,connected:0,registration:0,ftd:0,invalid,amount:0,problems:'',status:'quick'};
+const r={id:editId||Date.now().toString(),date:$('date').value||todayStr(),time:$('time').value||nowTime(),agent,ownerUid:currentUser?currentUser.uid:'',totalCalls:0,connected:0,registration:0,ftd:0,invalid,amount:0,problems:'',status:'quick'};
 if(editId){reports=reports.map(x=>x.id===editId?r:x);}else{reports.unshift(r);}
 localStorage.setItem('last_agent',agent);save();syncToFirebase(r);editId=null;$('formTitle').textContent='➕ নতুন রিপোর্ট';$('saveBtn').textContent='💾 পুরো রিপোর্ট সেভ করুন — অ্যাডমিনকে পাঠানোর জন্য তৈরি হবে';$('cancelEdit').style.display='none';
 $('form').reset();$('date').value=todayStr();$('time').value=nowTime();$('agent').value=localStorage.getItem('last_agent')||'';render();showTab('list');toast('⚡ Invalid নম্বর সেভ হয়েছে! পরে Edit করে পুরো রিপোর্ট বানাতে পারবেন।');
 };
-$('form').addEventListener('submit',e=>{e.preventDefault();const r={id:editId||Date.now().toString(),date:$('date').value,time:$('time').value,agent:$('agent').value.trim(),totalCalls:num($('totalCalls').value),connected:num($('connected').value),registration:num($('registration').value),ftd:num($('ftd').value),invalid:invalidList($('invalid').value).join(', '),amount:num($('amount').value),problems:$('problems').value.trim(),status:'full'};if(editId){reports=reports.map(x=>x.id===editId?r:x)}else{reports.unshift(r)}localStorage.setItem('last_agent',r.agent);save();syncToFirebase(r);editId=null;$('formTitle').textContent='➕ নতুন রিপোর্ট';$('saveBtn').textContent='💾 পুরো রিপোর্ট সেভ করুন — অ্যাডমিনকে পাঠানোর জন্য তৈরি হবে';$('cancelEdit').style.display='none';e.target.reset();$('date').value=todayStr();$('time').value=nowTime();$('agent').value=localStorage.getItem('last_agent')||'';render();showTab('form');showAdminReport(r);toast('✅ পুরো রিপোর্ট সেভ হয়েছে! নিচের রিপোর্টটা কপি করে অ্যাডমিনকে পাঠান।');});
+$('form').addEventListener('submit',e=>{e.preventDefault();const r={id:editId||Date.now().toString(),date:$('date').value,time:$('time').value,agent:$('agent').value.trim(),ownerUid:currentUser?currentUser.uid:'',totalCalls:num($('totalCalls').value),connected:num($('connected').value),registration:num($('registration').value),ftd:num($('ftd').value),invalid:invalidList($('invalid').value).join(', '),amount:num($('amount').value),problems:$('problems').value.trim(),status:'full'};if(editId){reports=reports.map(x=>x.id===editId?r:x)}else{reports.unshift(r)}localStorage.setItem('last_agent',r.agent);save();syncToFirebase(r);editId=null;$('formTitle').textContent='➕ নতুন রিপোর্ট';$('saveBtn').textContent='💾 পুরো রিপোর্ট সেভ করুন — অ্যাডমিনকে পাঠানোর জন্য তৈরি হবে';$('cancelEdit').style.display='none';e.target.reset();$('date').value=todayStr();$('time').value=nowTime();$('agent').value=localStorage.getItem('last_agent')||'';render();showTab('form');showAdminReport(r);toast('✅ পুরো রিপোর্ট সেভ হয়েছে! নিচের রিপোর্টটা কপি করে অ্যাডমিনকে পাঠান।');});
 $('cancelEdit').onclick=()=>{editId=null;$('formTitle').textContent='➕ নতুন রিপোর্ট';$('saveBtn').textContent='💾 পুরো রিপোর্ট সেভ করুন — অ্যাডমিনকে পাঠানোর জন্য তৈরি হবে';$('cancelEdit').style.display='none';$('form').reset();$('date').value=todayStr();$('time').value=nowTime();};
 $('invalid').addEventListener('input',()=>{const c=invalidList($('invalid').value).length;$('invalidCount').textContent=c?`Invalid নম্বর: ${c}টি`:'';});
 $('filterDate').addEventListener('change',render);$('filterAgent').addEventListener('input',render);
@@ -217,8 +227,12 @@ $('showAll').onclick=()=>{$('filterDate').value='';$('filterAgent').value='';ren
 $('showToday').onclick=()=>{$('filterDate').value=todayStr();render();};
 $('exportCsv').onclick=()=>{const rows=[['Date','Time','Agent ID','Total Calls','Connected','Registration','FTD','Invalid Number','Total Amount Recharged','Problems']];filtered().forEach(r=>rows.push([r.date,r.time,r.agent,r.totalCalls,r.connected,r.registration,r.ftd,r.invalid,r.amount,r.problems]));const csv=rows.map(row=>row.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='daily-reports.csv';a.click();toast('CSV ডাউনলোড শুরু হয়েছে');};
 $('date').value=todayStr();$('time').value=nowTime();$('agent').value=localStorage.getItem('last_agent')||'';
+let auth=null;try{if(window.firebase&&firebase.apps&&firebase.apps.length)auth=firebase.auth();}catch(e){}
+function authError(e){const m=(e&&e.code)||'';if(m.includes('operation-not-allowed'))return 'Firebase-এ Email লগইন এখনো চালু হয়নি।';if(m.includes('email-already-in-use'))return 'এই ইমেইলে অ্যাকাউন্ট already আছে, Sign In করুন।';if(m.includes('wrong-password')||m.includes('invalid-credential'))return 'ইমেইল বা পাসওয়ার্ড ভুল।';if(m.includes('weak-password'))return 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষর হতে হবে।';if(m.includes('invalid-email'))return 'সঠিক ইমেইল দিন।';return 'লগইন হয়নি, আবার চেষ্টা করুন।';}
+$('googleBtn').onclick=async()=>{try{await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());}catch(e){const m=(e&&e.code)||'';$('authMsg').textContent=m.includes('unauthorized-domain')?'এই ডোমেইন Firebase-এ অনুমোদিত নয়, ডোমেইন যোগ করার পর আবার চেষ্টা করুন।':m.includes('popup-closed')?'Google লগইন বন্ধ করা হয়েছে, আবার চেষ্টা করুন।':m.includes('operation-not-allowed')?'Firebase-এ Google লগইন এখনো চালু হয়নি।':'Google লগইন হয়নি, আবার চেষ্টা করুন।';}};
+$('logoutBtn').onclick=()=>{if(auth)auth.signOut();};
+if(auth){auth.onAuthStateChanged(u=>{currentUser=u;if(fbListener){fbListener.off();fbListener=null;}if(!u){reports=[];$('authCard').style.display='block';$('userBar').style.display='none';$('appContent').style.display='none';render();return;}$('authCard').style.display='none';$('userBar').style.display='flex';$('userEmail').textContent=u.email;$('appContent').style.display='block';reports=JSON.parse(localStorage.getItem(KEY+'_'+u.uid)||'[]');render();loadFromFirebase();});}else{$('authMsg').textContent='Firebase Auth লোড হয়নি, পেজ রিফ্রেশ করুন।';}
 render();
-loadFromFirebase();
 </script>
 </body>
 </html>

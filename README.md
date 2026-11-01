@@ -23,3 +23,16 @@
 - Project: S A Topup bazar (fir-a-topup-bazar), Realtime Database only, node daily_reports.
 - Reports save to Firebase when online, localStorage is offline fallback/cache. Existing users node is NOT touched.
 - Note: current Realtime Database rules are open (read/write true) — tighten before production use in a separate step.
+
+## Login v4 (2026-11-01, in progress)
+- Firebase Auth Email/Password, separate account per agent, separate data per user.
+- Data path: daily_reports/{uid}/{reportId}, rules allow only own uid.
+- Login screen first: Sign Up for new account, Sign In for existing, Logout on top.
+- Each user sees only their own reports; local cache is also per-user.
+- Test step (after deploy): sign up with test accounts, verify isolation, then give final link.
+
+## Login v5 Google-only (2026-11-01, correction, supersedes v4 email/password)
+- Login is ONLY Continue with Google (real Firebase GoogleAuthProvider popup, not a fake form).
+- No email/password fields, no Sign Up form. Email/Password provider to be disabled in Firebase.
+- Authorized domain daily-report-app-chi-red.vercel.app must be added for Google popup to work from live app.
+- Per-user data path and rules unchanged: daily_reports/{uid}/{reportId}.
